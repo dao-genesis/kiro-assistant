@@ -1,0 +1,140 @@
+{
+	"name": "kiro-assistant",
+	"displayName": "Kiro Assistant · Dao Agent",
+	"description": "Transparent local proxy for Kiro IDE with system prompt injection, cross-platform, zero hardcoding, auto-adapts to any user environment",
+	"version": "12.0.0",
+	"publisher": "dao-agi",
+	"license": "Apache-2.0",
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/zhouyoukang/kiro-assistant.git"
+	},
+	"homepage": "https://github.com/zhouyoukang/kiro-assistant",
+	"icon": "media/icon.png",
+	"categories": [
+		"AI",
+		"Other"
+	],
+	"keywords": [
+		"kiro",
+		"assistant",
+		"proxy",
+		"system-prompt",
+		"dao",
+		"cross-platform"
+	],
+	"activationEvents": [
+		"*"
+	],
+	"main": "./extension.js",
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": true,
+			"description": "Kiro Assistant runs in all workspaces"
+		},
+		"virtualWorkspaces": true
+	},
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "dao-container",
+					"title": "Kiro Assistant",
+					"icon": "media/icon.svg"
+				}
+			]
+		},
+		"views": {
+			"dao-container": [
+				{
+					"id": "dao.essence",
+					"name": "Assistant Panel",
+					"type": "webview"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "kiro.dao.invert",
+				"title": "Kiro Assistant: Start (invert · system prompt injection · transparent proxy)",
+				"category": "Kiro Assistant"
+			},
+			{
+				"command": "kiro.dao.passthrough",
+				"title": "Kiro Assistant: Start (passthrough · direct connection)",
+				"category": "Kiro Assistant"
+			},
+			{
+				"command": "kiro.dao.toggleMode",
+				"title": "Kiro Assistant: Toggle Mode (invert ⇄ passthrough)",
+				"category": "Kiro Assistant"
+			},
+			{
+				"command": "kiro.dao.openPreview",
+				"title": "Kiro Assistant: Preview System Prompt",
+				"category": "Kiro Assistant"
+			},
+			{
+				"command": "kiro.dao.selftest",
+				"title": "Kiro Assistant: Self-test (L1 + L2)",
+				"category": "Kiro Assistant"
+			},
+			{
+				"command": "kiro.dao.term.exec",
+				"title": "Kiro Assistant: Terminal exec",
+				"category": "Kiro Assistant"
+			},
+			{
+				"command": "kiro.dao.term.list",
+				"title": "Kiro Assistant: Terminal list",
+				"category": "Kiro Assistant"
+			},
+			{
+				"command": "kiro.dao.term.close",
+				"title": "Kiro Assistant: Terminal close",
+				"category": "Kiro Assistant"
+			}
+		],
+		"configuration": {
+			"title": "Kiro Assistant",
+			"properties": {
+				"kiro.dao.port": {
+					"type": "number",
+					"default": 0,
+					"minimum": 0,
+					"maximum": 65535,
+					"description": "Proxy port (0 = auto per-user FNV-1a hash, range 11436-11485, natural multi-account isolation). Non-zero overrides."
+				},
+				"kiro.dao.defaultMode": {
+					"type": "string",
+					"default": "invert",
+					"enum": [
+						"invert",
+						"passthrough"
+					],
+					"enumDescriptions": [
+						"invert — System prompt injection + transparent proxy",
+						"passthrough — Direct connection to official endpoint"
+					],
+					"description": "Default mode on first activation"
+				},
+				"kiro.dao.banner": {
+					"type": "boolean",
+					"default": false,
+					"description": "Show startup banner (default: false)"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"package": "vsce package --no-dependencies --allow-missing-repository"
+	},
+	"devDependencies": {
+		"@types/node": "^20.14.0",
+		"@types/vscode": "^1.84.0",
+		"@vscode/vsce": "^3.6.0"
+	}
+}
