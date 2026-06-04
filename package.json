@@ -2,7 +2,7 @@
 	"name": "kiro-assistant",
 	"displayName": "Kiro Assistant · Dao Agent",
 	"description": "Transparent local proxy for Kiro IDE with system prompt injection, cross-platform, zero hardcoding, auto-adapts to any user environment",
-	"version": "12.0.0",
+	"version": "12.1.0",
 	"publisher": "dao-agi",
 	"license": "Apache-2.0",
 	"engines": {
