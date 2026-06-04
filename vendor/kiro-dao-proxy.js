@@ -73,24 +73,30 @@ function _sseBroadcast(event, data) {
   }
 }
 
-// ── 全局: 清除代理环境变量 ──
-// Electron 环境下 Chromium 网络栈会读取 HTTP_PROXY/HTTPS_PROXY 环境变量
-// 导致连接走系统代理(如 Clash 127.0.0.1:7897)，AWS Q 连接失败
-// 必须在模块加载时一次性清除，防止任何 HTTPS 请求走代理
-for (const k of [
-  "HTTP_PROXY",
-  "HTTPS_PROXY",
-  "ALL_PROXY",
-  "http_proxy",
-  "https_proxy",
-  "all_proxy",
-]) {
-  if (process.env[k]) {
-    delete process.env[k];
-  }
+// ── v12.1: 不破用户VPN · 道法自然 · 不删全局代理变量 ──
+// 旧版 delete process.env.HTTP_PROXY 破坏用户整个VPN环境(Clash/V2Ray等)
+// Node.js 原生 https.request 本就不读 HTTP_PROXY 环境变量，直连目标
+// 故: 清除代理变量对proxy自身出站连接无效，只破坏了Kiro其他网络请求
+// 修复: 保留全局代理变量，仅在自己的出站请求中用 agent: _DIRECT_AGENT 直连
+// 道义: 五十八章「方而不割，廉而不刿」— 不割用户环境
+const _DIRECT_AGENT = new https.Agent({
+  keepAlive: true,
+  maxSockets: 4,
+  // 无 proxy — 直连目标
+});
+// v12.1: 追加 NO_PROXY 而非覆盖 — 保留用户已有规则
+const _DAO_NO_PROXY_SUFFIX =
+  "*.amazonaws.com,*.amazonaws.com.cn,localhost,127.0.0.1";
+if (process.env.NO_PROXY) {
+  process.env.NO_PROXY += "," + _DAO_NO_PROXY_SUFFIX;
+} else {
+  process.env.NO_PROXY = _DAO_NO_PROXY_SUFFIX;
 }
-process.env.NO_PROXY = "*.amazonaws.com,*.amazonaws.com.cn,localhost,127.0.0.1";
-process.env.no_proxy = process.env.NO_PROXY;
+if (process.env.no_proxy) {
+  process.env.no_proxy += "," + _DAO_NO_PROXY_SUFFIX;
+} else {
+  process.env.no_proxy = _DAO_NO_PROXY_SUFFIX;
+}
 
 // AWS Q Service 端点 · v12: 动态发现 — 从Kiro请求中捕获region, 按需构建
 // 预置已知region (Kiro首次请求后自动补充)
@@ -1640,6 +1646,7 @@ function handleRequest(req, res) {
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
               "content-length": String(Buffer.byteLength(injectedStr)),
             },
+            agent: _DIRECT_AGENT, // v12.1: 显式直连
           };
           _log(
             `  🧪 E2E测试: 发送注入后body ${injectedStr.length} bytes → ${upstream.host}`,
@@ -2455,6 +2462,8 @@ function handleRequest(req, res) {
       _relayProc.send(relayMsg);
     } else {
       // ═══ 直连模式 (非Electron / Relay不可用) ═══
+      // v12.1: agent: _DIRECT_AGENT 确保直连AWS Q · 不走系统VPN
+      // 道义: 五十八章「光而不耀」— 直连而不破坏用户代理环境
       _log(`  🔌 直连模式: ${upstream.host}:${upstream.port}${req.url}`);
       const options = {
         hostname: upstream.host,
@@ -2462,6 +2471,7 @@ function handleRequest(req, res) {
         path: req.url,
         method: req.method,
         headers: fwdHeaders,
+        agent: _DIRECT_AGENT, // v12.1: 显式直连 · 不读HTTP_PROXY
       };
 
       const upstreamReq = https.request(options, (upstreamRes) => {
@@ -2755,19 +2765,14 @@ module.exports = {
           try {
             const relayPath = path.join(__dirname, "_upstream_relay.js");
             if (fs.existsSync(relayPath)) {
+              // v12.1: 不清空代理变量 · 保留用户VPN环境
+              // Relay子进程用Node.js原生https.request(不读HTTP_PROXY)
+              // 道义: 五十八章「方而不割」— 不割用户代理
               _relayProc = child_process.fork(relayPath, [], {
                 stdio: ["pipe", "pipe", "pipe", "ipc"],
                 env: {
                   ...process.env,
-                  // 确保子进程不继承代理设置
-                  HTTP_PROXY: "",
-                  HTTPS_PROXY: "",
-                  ALL_PROXY: "",
-                  http_proxy: "",
-                  https_proxy: "",
-                  all_proxy: "",
-                  NO_PROXY: "*",
-                  no_proxy: "*",
+                  // v12.1: 不再强制清空代理变量 · Relay内部用agent直连
                 },
               });
               _relayProc.on("message", (msg) => {
@@ -2787,18 +2792,12 @@ module.exports = {
                   _log("  🔄 尝试重启 Relay子进程...");
                   setTimeout(() => {
                     try {
+                      // v12.1: 不清空代理变量 · 保留用户VPN环境
                       _relayProc = child_process.fork(relayPath, [], {
                         stdio: ["pipe", "pipe", "pipe", "ipc"],
                         env: {
                           ...process.env,
-                          HTTP_PROXY: "",
-                          HTTPS_PROXY: "",
-                          ALL_PROXY: "",
-                          http_proxy: "",
-                          https_proxy: "",
-                          all_proxy: "",
-                          NO_PROXY: "*",
-                          no_proxy: "*",
+                          // v12.1: 不再强制清空代理变量
                         },
                       });
                       _relayProc.on("message", (msg) => {

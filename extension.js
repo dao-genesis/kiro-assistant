@@ -551,15 +551,9 @@ function spawnProxy(port, mode) {
     ...process.env,
     DAO_PORT: String(port),
     DAO_MODE: mode || "invert",
-    // 清除代理环境变量 · 防止子进程走系统代理
-    HTTP_PROXY: "",
-    HTTPS_PROXY: "",
-    ALL_PROXY: "",
-    http_proxy: "",
-    https_proxy: "",
-    all_proxy: "",
-    NO_PROXY: "*",
-    no_proxy: "*",
+    // v12.1: 不再清除代理环境变量 · 保留用户VPN(Clash/V2Ray等)
+    // proxy内部用 _DIRECT_AGENT (https.Agent) 直连AWS Q · 不读HTTP_PROXY
+    // 道义: 五十八章「方而不割，廉而不刿」— 不割用户环境
   };
   try {
     const child = cp.spawn(nodeExe, args, {
