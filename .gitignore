@@ -3,3 +3,9 @@ node_modules/
 *.log
 package-lock.json
 _gh_create_repo.js
+# 第三方改道本地配置 (含密钥, 不入库)
+vendor/_dao_route.json
+# 运行时诊断转储
+vendor/_resp_dump_*.bin
+vendor/_body_post_*.json
+vendor/_custom_sp.json
