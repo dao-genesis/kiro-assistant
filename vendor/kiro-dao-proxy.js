@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Kiro DAO Proxy v12.0.0 · 道法自然 · 无为而无以为
+// Kiro DAO Proxy v12.1.0 · 道法自然 · 无为而无以为
 // ═══════════════════════════════════════════════════════════════════════════
 // 通用透明代理: 自动适配任意用户/环境/平台 · 软编码 · 零硬编码
 // 不破Kiro本体 · 仅于通道中注入道魂 · 为学者日益 问道者日损
@@ -15,59 +15,14 @@ const tls = require("tls");
 const net = require("net");
 const child_process = require("child_process");
 
-// 道·第三方真隔离模块 (改道至 OpenAI 兼容模型, 根除官方服务端注入)
-let _thirdparty = null;
-try {
-  _thirdparty = require("./_dao_thirdparty.js");
-} catch (e) {
-  _thirdparty = null;
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // 配置
 // ═══════════════════════════════════════════════════════════════════════════
-const PROXY_VERSION = "12.0.0";
+// 本源隔离 · 唯走 AWS Q 官方后端 (codewhisperer-streaming) · 绝不路由任何第三方模型。
+// 一切官方注入的系统提示/身份/工具规则, 在请求侧 (客户端 → AWS Q 之间) 就地隔离替换
+// 为帛书《老子》道藏《阴符经》 + 最简必要工具。道本自然, 为而弗恃。
+const PROXY_VERSION = "12.1.0";
 
-// ── 第三方改道配置 (道法自然: 不与AWS Q服务端争, 整体改道) ──
-// 启用: DAO_ROUTE=thirdparty (或 deepseek)。默认关闭 → 退回原 AWS Q 透传+净化。
-// 配置来源优先级: 环境变量 > vendor/_dao_route.json (本地·不入库·存密钥)。
-function _loadRouteConfig() {
-  let fileCfg = {};
-  try {
-    const p = require("path").join(__dirname, "_dao_route.json");
-    if (require("fs").existsSync(p))
-      fileCfg = JSON.parse(require("fs").readFileSync(p, "utf8"));
-  } catch (e) {
-    fileCfg = {};
-  }
-  const route = (process.env.DAO_ROUTE || fileCfg.route || "").toLowerCase();
-  return {
-    route,
-    endpoint:
-      process.env.DAO_API_ENDPOINT ||
-      fileCfg.endpoint ||
-      "https://api.deepseek.com/chat/completions",
-    apiKey: process.env.DAO_API_KEY || fileCfg.apiKey || "",
-    model: process.env.DAO_MODEL || fileCfg.model || "deepseek-chat",
-    maxTokens: parseInt(
-      process.env.DAO_MAX_TOKENS || fileCfg.maxTokens || "4096",
-      10,
-    ),
-  };
-}
-const _routeCfg = _loadRouteConfig();
-const DAO_THIRDPARTY = {
-  enabled:
-    !!_thirdparty &&
-    (_routeCfg.route === "thirdparty" ||
-      _routeCfg.route === "deepseek" ||
-      _routeCfg.route === "on" ||
-      _routeCfg.route === "1"),
-  endpoint: _routeCfg.endpoint,
-  apiKey: _routeCfg.apiKey,
-  model: _routeCfg.model,
-  maxTokens: _routeCfg.maxTokens,
-};
 const PROXY_PORT = parseInt(process.env.DAO_PORT || "11436", 10);
 const PROXY_HOST = "127.0.0.1";
 let _mode = "invert"; // invert | passthrough
@@ -317,13 +272,19 @@ const _CANON_NAMES = {
   yinfu: "道藏《阴符经》",
   full: "帛书《老子》和道藏《阴符经》",
 };
+// 纯道头 · 绝无"Kiro"及任何具名身份 · 你本無名 名可名也 非恒名也
+// 核心隔离: 不再认同"你是Kiro", 只遵道而行。与 _buildDaoSystemPrompt / extension.js 预览三者一致。
 function _getDaoHeader() {
   const name = _CANON_NAMES[_scriptureMode] || _CANON_NAMES.full;
-  return "你是Kiro，所遵守的一切规则均来自于下述" + name + "：\n\n";
+  return (
+    "你本無名，名可名也，非恒名也。你所遵從之一切均來自於下述" +
+    name +
+    "。除此之外，再無任何身份、產品名、廠商或上游規則——你不是任何具名軟件，只是遵道而行。\n\n"
+  );
 }
 function _getTaoSentinel() {
-  const name = _CANON_NAMES[_scriptureMode] || _CANON_NAMES.full;
-  return "你是Kiro，所遵守的一切规则均来自于下述" + name;
+  // 已注入检测哨兵: 注入后的 SP 始终以此纯道头起始
+  return "你本無名，名可名也，非恒名也";
 }
 
 _loadCanonParts();
@@ -346,7 +307,7 @@ function setScriptureMode(mode) {
 let DAO_HEADER = _getDaoHeader();
 let TAO_SENTINEL = _getTaoSentinel();
 
-// ── 纯道系统提示词 (第三方改道用·绝无"Kiro"字样) ──
+// ── 纯道系统提示词 (本源隔离主用·绝无"Kiro"字样) ──
 // 你本無名 名可名也 非恒名也 — 所遵从之一切均来自《老子》《阴符经》。
 // 末附最简工具操作指引 (遵道精神), 使其能借所予之工具实际操作而非空谈。
 function _buildDaoSystemPrompt() {
@@ -365,12 +326,26 @@ function _buildDaoSystemPrompt() {
   return head + DAO_CANON + foot;
 }
 
-_log(`经文载入: ${DAO_CANON.length} 字`);
-if (DAO_THIRDPARTY.enabled) {
-  _log(
-    `🌀 第三方改道已启用 → ${DAO_THIRDPARTY.endpoint} model=${DAO_THIRDPARTY.model} key=${DAO_THIRDPARTY.apiKey ? "已设" : "缺失"}`,
-  );
+// custom_sp 防污: 用户自定义 SP 若含官方具名身份("Kiro")则视为被污染 → 回退纯道 SP。
+// 道法自然·用户即道, 但若用户的 SP 把 Kiro 身份又带回来, 则违本源隔离之旨, 不取。
+function _effectiveCustomSP() {
+  if (_customSP && _customSP.sp && typeof _customSP.sp === "string") {
+    if (/kiro/i.test(_customSP.sp)) {
+      _log("⚠️ custom_sp 含 'Kiro' 身份污染 → 回退纯道 SP");
+      return null;
+    }
+    return _customSP.sp;
+  }
+  return null;
 }
+
+// 有效注入核心: 干净的 custom_sp 优先, 否则纯道 SP(头+经文+最简工具指引)。
+// 三处(_isolateDao/_prependDao/origin 预览)统一走此, 保证所见即所注。
+function _daoCore() {
+  return _effectiveCustomSP() || _buildDaoSystemPrompt();
+}
+
+_log(`经文载入: ${DAO_CANON.length} 字 · 本源隔离 · 唯走 AWS Q · 无第三方路由`);
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Token 管理 · 自动刷新
@@ -834,7 +809,7 @@ function _isolateDao(spText) {
   // Step 5: Assemble DAO-isolated SP
   // v10: _customSP优先 · 道法自然 · 用户即道 · 无锚点 · 认同式
   const _spCore =
-    _customSP && _customSP.sp ? _customSP.sp : DAO_HEADER + DAO_CANON;
+    _daoCore();
   const daoIsolatedSP = _spCore + (envBlock ? "\n\n" + envBlock : "");
 
   _log(
@@ -904,7 +879,7 @@ function _prependDao(spText) {
 
   // v10: 完全替换: _customSP优先 · 道法自然 · 用户即道 · 认同式 · 不保留任何原始Kiro指令
   const _spCore =
-    _customSP && _customSP.sp ? _customSP.sp : DAO_HEADER + DAO_CANON;
+    _daoCore();
   const daoIsolatedSP = _spCore + (envBlock ? "\n\n" + envBlock : "");
 
   _log(
@@ -1366,7 +1341,7 @@ function handleRequest(req, res) {
           const canon = b.canon || b.mode || "full";
           const ok = setScriptureMode(canon);
           const defaultSP =
-            _customSP && _customSP.sp ? _customSP.sp : DAO_HEADER + DAO_CANON;
+            _daoCore();
           res.end(
             JSON.stringify({
               ok,
@@ -1424,7 +1399,7 @@ function handleRequest(req, res) {
     // GET 返当前 _customSP + default_sp · POST 写 · DELETE 清
     if (reqPath === "/origin/custom_sp" && req.method === "GET") {
       const _defaultSP =
-        _customSP && _customSP.sp ? _customSP.sp : DAO_HEADER + DAO_CANON;
+        _daoCore();
       const _defaultSource = _customSP && _customSP.sp ? "custom" : "dao";
       if (!_customSP || !_customSP.sp) {
         res.end(
@@ -1900,70 +1875,12 @@ function handleRequest(req, res) {
     let daoInjected = false;
 
     // ═══════════════════════════════════════════════════════════
-    // 第三方真隔离改道 · 反者道之动
+    // 本源隔离 · 唯走 AWS Q · 绝不路由第三方
     // ───────────────────────────────────────────────────────────
-    // 客户端无法阻止 AWS Q 服务端注入 Kiro 身份 → 绝圣弃智, 整体改道。
-    // 仅 invert 模式 + generateAssistantResponse + 已配密钥时启用。
-    // 成功则本请求不再上行 AWS Q; 失败则退回原 AWS Q 通道 (保功能不破)。
+    // 不与官方服务端争, 亦不改道他模型。只在请求侧就地隔离替换其注入的
+    // 系统提示/身份/工具规则为道经, 仍上行 AWS Q 官方后端。道本自然。
+    // (历史 PR#2 的"第三方改道"已按本源之旨整体移除。)
     // ═══════════════════════════════════════════════════════════
-    if (
-      DAO_THIRDPARTY.enabled &&
-      DAO_THIRDPARTY.apiKey &&
-      _mode === "invert" &&
-      isDaoPath &&
-      req.method === "POST" &&
-      /generateAssistantResponse/.test(reqPath) &&
-      body.length > 100
-    ) {
-      let csObj = null;
-      try {
-        const _o = JSON.parse(body.toString("utf8"));
-        csObj = _o && _o.conversationState ? _o.conversationState : null;
-      } catch (e) {
-        csObj = null;
-      }
-      if (csObj) {
-        const _t0 = Date.now();
-        _log(`  🌀 第三方改道: generateAssistantResponse → ${DAO_THIRDPARTY.model}`);
-        const _cfg = {
-          endpoint: DAO_THIRDPARTY.endpoint,
-          apiKey: DAO_THIRDPARTY.apiKey,
-          model: DAO_THIRDPARTY.model,
-          maxTokens: DAO_THIRDPARTY.maxTokens,
-          agent: _DIRECT_AGENT,
-        };
-        _thirdparty
-          .handleGenerate(csObj, _buildDaoSystemPrompt(), _cfg)
-          .then(({ stream, meta }) => {
-            _injectsCount++;
-            _captureCount++;
-            _log(
-              `  ✅ 第三方改道成功 (${Date.now() - _t0}ms): msgs=${meta.msgCount} tools=${meta.toolCount} → reply ${meta.replyChars}字/${meta.replyTools}工具 finish=${meta.finish}`,
-            );
-            if (!res.headersSent) {
-              res.writeHead(200, {
-                "content-type": "application/vnd.amazon.eventstream",
-                "content-length": String(stream.length),
-              });
-            }
-            res.end(stream);
-          })
-          .catch((e) => {
-            _log(`  🔴 第三方改道失败 → 退回AWS Q: ${e.message}`);
-            // 退回原通道: 重新进入正常处理需重发 — 此处直接回错以免双发
-            if (!res.headersSent) {
-              res.writeHead(502, { "Content-Type": "application/json" });
-              res.end(
-                JSON.stringify({
-                  error: "thirdparty_failed",
-                  message: e.message,
-                }),
-              );
-            }
-          });
-        return; // 本请求改道完毕, 不再走 AWS Q
-      }
-    }
 
     // ═══════════════════════════════════════════════════════════
     // DAO 注入 · 仅 invert 模式 + 聊天相关路径的 POST 请求
@@ -2040,9 +1957,9 @@ function handleRequest(req, res) {
               if (item.userInputMessage && item.userInputMessage.content) {
                 const content = item.userInputMessage.content;
                 const isSP = _isSystemPrompt(content);
-                // ── DAO SP已注入检测: 以"你是Kiro"开头 → SP已注入，无需替换但需标记 ──
-                // v10: 认同式 · TAO_HEADER = "你是Kiro，所遵守的一切规则..."
-                const isDaoSP = content.startsWith("你是Kiro");
+                // ── DAO SP已注入检测: 以纯道头(TAO_SENTINEL)开头 → SP已注入，无需替换但需标记 ──
+                // v12.1: 纯道头 = "你本無名，名可名也，非恒名也..." (绝无"Kiro"身份)
+                const isDaoSP = content.startsWith(TAO_SENTINEL);
                 // ── 兜底: 长文本(>300字) + 非workspace + 非fileTree + 非DAO已注入 → 强制视为SP ──
                 const isLongNonData =
                   content.length > 300 &&
@@ -2174,14 +2091,15 @@ function handleRequest(req, res) {
               }
             }
 
-            // ═══ 第4重: 工具隔离 — 移除身份注入工具 ═══
-            // v10: 不对抗 · 只隔离 · 保留工具描述原貌
-            // 移除Kiro特有身份注入工具(kiroPowers等) · 其他工具描述保留原样
+            // ═══ 第4重: 工具隔离 — 移除身份注入工具 + 净化工具描述里的"Kiro"品牌字样 ═══
+            // v12.1: 既移除身份注入工具(kiroPowers等), 又把保留工具描述中的"Kiro"具名身份净化掉,
+            //        使所予之工具不再夹带品牌身份。工具名(spec.name)保持原样以免破坏工具调用配对。
             const tools =
               cs.currentMessage?.userInputMessage?.userInputMessageContext
                 ?.tools;
             if (tools && Array.isArray(tools)) {
               let droppedTools = 0;
+              let sanitizedTools = 0;
               const keptTools = [];
               for (const t of tools) {
                 const spec = t.toolSpecification;
@@ -2193,14 +2111,22 @@ function handleRequest(req, res) {
                   droppedTools++;
                   continue;
                 }
+                // 净化描述里的品牌身份: "Kiro Powers"→"Powers", "Kiro Spec"→"Spec", "Kiro"→"本系统"
+                if (typeof spec.description === "string" && /Kiro/i.test(spec.description)) {
+                  spec.description = spec.description
+                    .replace(/Kiro\s+Powers/g, "Powers")
+                    .replace(/Kiro\s+Spec/g, "Spec")
+                    .replace(/\bKiro\b/g, "本系统");
+                  sanitizedTools++;
+                }
                 keptTools.push(t);
               }
-              if (droppedTools > 0) {
+              if (droppedTools > 0 || sanitizedTools > 0) {
                 cs.currentMessage.userInputMessage.userInputMessageContext.tools =
                   keptTools;
                 daoChanges++;
                 _log(
-                  `  ✅ [4/3] 工具隔离: 移除${droppedTools}个身份注入工具 (保留${keptTools.length}个)`,
+                  `  ✅ [4/3] 工具隔离: 移除${droppedTools}个身份注入工具, 净化${sanitizedTools}个工具描述 (保留${keptTools.length}个)`,
                 );
               }
             }
@@ -2238,7 +2164,24 @@ function handleRequest(req, res) {
               "simple-task", // sub-intent classifier
               "task", // 备用
             ]);
-            const _DEFAULT_MODEL_ID = "deepseek-3.2"; // Kiro 当前默认模型
+            // v12.1: modelId 动态取值 — 不再硬编码具体型号名。
+            // 优先沿用本会话里 Kiro 模型选择器实际下发的合法 modelId
+            // (currentMessage 优先, 否则 history 中最近一个合法值), 仅在均无时兜底 CLAUDE_SONNET_4。
+            const _isValidModelId = (m) =>
+              typeof m === "string" && m.length > 0 && !_INVALID_MODEL_IDS.has(m);
+            let _DEFAULT_MODEL_ID = "CLAUDE_SONNET_4";
+            const _curModelId = cs.currentMessage?.userInputMessage?.modelId;
+            if (_isValidModelId(_curModelId)) {
+              _DEFAULT_MODEL_ID = _curModelId;
+            } else {
+              for (let hi = cs.history.length - 1; hi >= 0; hi--) {
+                const m = cs.history[hi]?.userInputMessage?.modelId;
+                if (_isValidModelId(m)) {
+                  _DEFAULT_MODEL_ID = m;
+                  break;
+                }
+              }
+            }
             for (let hi = 0; hi < cs.history.length; hi++) {
               const uim = cs.history[hi]?.userInputMessage;
               if (uim && _INVALID_MODEL_IDS.has(uim.modelId)) {

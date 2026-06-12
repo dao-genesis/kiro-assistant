@@ -2,7 +2,7 @@
 
 A transparent local proxy extension for [Kiro IDE](https://kiro.dev) that provides system prompt injection, cross-platform auto-adaptation, and zero hardcoding. Install once, works everywhere.
 
-> **v12.0.0** — Universal cross-platform, zero hardcoding, auto-discovers AWS regions, dynamic anchoring, proxy persists across Kiro restarts.
+> **v12.1.0** — Pure source isolation: official system prompts/identity/tool rules are replaced in-flight with the Dao De Jing & Yin Fu Jing. Traffic still goes to the official AWS Q backend only — **never routed to any third-party model**. Universal cross-platform, zero hardcoding, auto-discovers AWS regions, dynamic anchoring, proxy persists across Kiro restarts.
 
 ## Features
 
@@ -51,7 +51,7 @@ install.cmd
 
 ```powershell
 npm run package
-:: Then install in Kiro: kiro --install-extension kiro-assistant-12.0.0.vsix
+:: Then install in Kiro: kiro --install-extension kiro-assistant-12.1.0.vsix
 ```
 
 ### Method 3: Manual
