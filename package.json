@@ -10,9 +10,9 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/zhouyoukang/kiro-assistant.git"
+		"url": "https://github.com/zhouyoukang1234-spec/kiro-assistant.git"
 	},
-	"homepage": "https://github.com/zhouyoukang/kiro-assistant",
+	"homepage": "https://github.com/zhouyoukang1234-spec/kiro-assistant",
 	"icon": "media/icon.png",
 	"categories": [
 		"AI",

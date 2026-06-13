@@ -24,6 +24,13 @@ node_modules/**
 **/_decode_*
 **/_deep_*
 **/INDEX.md
+# 去芜存精: dev/ops 脚本与会话产物不入包 (运行期文件由 .gitignore 排除)
+scripts/**
+PROJECT-STATUS.md
+**/_origin_mode.txt
+**/_scripture_mode.txt
+**/_dao_stats.json
+**/_dao_isolated_sp.txt
 *.log
 *.vsix
 package-lock.json
@@ -32,3 +39,5 @@ install.ps1
 uninstall.ps1
 install.cmd
 .vscodeignore
+.gitignore
+.gitattributes

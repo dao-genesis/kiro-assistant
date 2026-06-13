@@ -27,7 +27,7 @@ function Ok($m)   { Write-Host "  OK  $m" -ForegroundColor Green }
 function Warn($m) { Write-Host "  !!  $m" -ForegroundColor Yellow }
 
 Write-Host "============================================================"
-Write-Host "  Kiro Assistant · 冷启动部署 v12.1.0 · 本源隔离 · 唯走 AWS Q"
+Write-Host "  Kiro Assistant · 冷启动部署 v12.6.0 · 本源隔离 · 唯走 AWS Q"
 Write-Host "============================================================"
 
 # ── 1. 停止 Kiro 与旧 proxy ──

@@ -1415,6 +1415,10 @@ function getEssenceHtml(port, nonce, initialSP, webview, extensionUri) {
       <span class="edit-status" id="editStatus"></span>
     </div>
   </div>
+  <div class="foot" style="margin-top:6px;padding:4px 4px 2px;border-top:1px solid rgba(128,128,128,0.18);font-size:9px;opacity:0.65;display:flex;justify-content:space-between;align-items:center;gap:6px">
+    <span title="道Agent · 反代换示 · 唯走官方 AWS Q">道Agent · v${PKG_VERSION}</span>
+    <a href="https://github.com/zhouyoukang1234-spec/kiro-assistant/releases/latest" target="_blank" rel="noopener" style="color:var(--vscode-textLink-foreground,#4daafc);text-decoration:none" title="GitHub Releases · 下载最新打包版本">下载最新 VSIX ↗</a>
+  </div>
   <noscript><div style="padding:16px;color:#e08080;font-size:11px">脚本被 CSP 拦截 · 请重载</div></noscript>
 <script nonce="${N}">
 (function() {
