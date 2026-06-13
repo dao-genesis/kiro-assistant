@@ -2,7 +2,7 @@
 	"name": "kiro-assistant",
 	"displayName": "Kiro Assistant · Dao Agent",
 	"description": "Transparent local proxy for Kiro IDE with system prompt injection, cross-platform, zero hardcoding, auto-adapts to any user environment",
-	"version": "12.1.0",
+	"version": "12.6.0",
 	"publisher": "dao-agi",
 	"license": "Apache-2.0",
 	"engines": {
@@ -10,9 +10,9 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/zhouyoukang/kiro-assistant.git"
+		"url": "https://github.com/zhouyoukang1234-spec/kiro-assistant.git"
 	},
-	"homepage": "https://github.com/zhouyoukang/kiro-assistant",
+	"homepage": "https://github.com/zhouyoukang1234-spec/kiro-assistant",
 	"icon": "media/icon.png",
 	"categories": [
 		"AI",
@@ -80,6 +80,11 @@
 			{
 				"command": "kiro.dao.selftest",
 				"title": "Kiro Assistant: Self-test (L1 + L2)",
+				"category": "Kiro Assistant"
+			},
+			{
+				"command": "kiro.dao.verifyEndToEnd",
+				"title": "Kiro Assistant: Verify End-to-End (isolation self-check)",
 				"category": "Kiro Assistant"
 			},
 			{

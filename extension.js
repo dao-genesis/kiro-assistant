@@ -37,7 +37,7 @@ const os = require("node:os");
 const crypto = require("node:crypto");
 const { EventEmitter } = require("node:events");
 
-const PKG_VERSION = "12.1.0";
+const PKG_VERSION = "12.6.0";
 const DEFAULT_PORT = 11436;
 
 // ═══════════════════════════ DAO Quotes ═══════════════════════════
@@ -1149,6 +1149,48 @@ async function cmdSelftest() {
   out.appendLine("════════════════════════════════════════\n");
 }
 
+// v12.6: 全链路自检 · 对齐 windsurf wam.verifyEndToEnd · 自足证隔离(不打 AWS)
+async function cmdVerifyEndToEnd() {
+  const out = logger();
+  out.show(true);
+  out.appendLine("");
+  out.appendLine("════════════════════════════════════════");
+  out.appendLine(`  道Agent · 全链路自检(verifyEndToEnd) · ${new Date().toISOString()}`);
+  out.appendLine("════════════════════════════════════════");
+  const { port } = cfg();
+  try {
+    const r = await httpGetJson(`http://127.0.0.1:${port}/origin/verify`, 4000);
+    if (!r || !Array.isArray(r.checks)) {
+      out.appendLine("  ✗ /origin/verify 无响应 (代理未启?)");
+      vscode.window.showWarningMessage("道Agent 自检: 代理未响应");
+      return;
+    }
+    out.appendLine(
+      `  v=${r.version} · mode=${r.mode} · 经文=${r.scripture_mode}(${r.canon_chars}字)`,
+    );
+    const passed = r.checks.filter((c) => c.pass).length;
+    for (const c of r.checks) {
+      out.appendLine(`  ${c.pass ? "✓" : "✗"} ${c.name}${c.error ? " · " + c.error : ""}`);
+    }
+    out.appendLine(
+      `\n  结论: ${r.ok ? "PASS" : "FAIL"} (${passed}/${r.checks.length})`,
+    );
+    out.appendLine("════════════════════════════════════════\n");
+    if (r.ok) {
+      vscode.window.showInformationMessage(
+        `道Agent 全链路自检 PASS (${passed}/${r.checks.length}) · 隔离生效`,
+      );
+    } else {
+      vscode.window.showWarningMessage(
+        `道Agent 全链路自检 FAIL (${passed}/${r.checks.length}) · 见输出面板`,
+      );
+    }
+  } catch (e) {
+    out.appendLine(`  ✗ verify 异: ${e.message}`);
+    vscode.window.showErrorMessage(`道Agent 自检失败: ${e.message}`);
+  }
+}
+
 async function cmdTermExec() {
   try {
     const sid = await vscode.window.showInputBox({
@@ -1372,6 +1414,10 @@ function getEssenceHtml(port, nonce, initialSP, webview, extensionUri) {
       <span class="edit-count" id="editCount"></span>
       <span class="edit-status" id="editStatus"></span>
     </div>
+  </div>
+  <div class="foot" style="margin-top:6px;padding:4px 4px 2px;border-top:1px solid rgba(128,128,128,0.18);font-size:9px;opacity:0.65;display:flex;justify-content:space-between;align-items:center;gap:6px">
+    <span title="道Agent · 反代换示 · 唯走官方 AWS Q">道Agent · v${PKG_VERSION}</span>
+    <a href="https://github.com/zhouyoukang1234-spec/kiro-assistant/releases/latest" target="_blank" rel="noopener" style="color:var(--vscode-textLink-foreground,#4daafc);text-decoration:none" title="GitHub Releases · 下载最新打包版本">下载最新 VSIX ↗</a>
   </div>
   <noscript><div style="padding:16px;color:#e08080;font-size:11px">脚本被 CSP 拦截 · 请重载</div></noscript>
 <script nonce="${N}">
@@ -2280,6 +2326,10 @@ function activate(ctx) {
       vscode.commands.registerCommand("kiro.dao.toggleMode", cmdToggle),
       vscode.commands.registerCommand("kiro.dao.openPreview", cmdOpenPreview),
       vscode.commands.registerCommand("kiro.dao.selftest", cmdSelftest),
+      vscode.commands.registerCommand(
+        "kiro.dao.verifyEndToEnd",
+        cmdVerifyEndToEnd,
+      ),
       vscode.commands.registerCommand("kiro.dao.term.exec", cmdTermExec),
       vscode.commands.registerCommand("kiro.dao.term.list", cmdTermList),
       vscode.commands.registerCommand("kiro.dao.term.close", cmdTermClose),

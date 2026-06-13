@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Kiro DAO Proxy v12.5.0 · 道法自然 · 无为而无以为
+// Kiro DAO Proxy v12.6.0 · 道法自然 · 无为而无以为
 // ═══════════════════════════════════════════════════════════════════════════
 // 通用透明代理: 自动适配任意用户/环境/平台 · 软编码 · 零硬编码
 // 不破Kiro本体 · 仅于通道中注入道魂 · 为学者日益 问道者日损
@@ -21,15 +21,35 @@ const child_process = require("child_process");
 // 本源隔离 · 唯走 AWS Q 官方后端 (codewhisperer-streaming) · 绝不路由任何第三方模型。
 // 一切官方注入的系统提示/身份/工具规则, 在请求侧 (客户端 → AWS Q 之间) 就地隔离替换
 // 为帛书《老子》道藏《阴符经》 + 最简必要工具。道本自然, 为而弗恃。
-const PROXY_VERSION = "12.5.0";
+const PROXY_VERSION = "12.6.0";
 
 const PROXY_PORT = parseInt(process.env.DAO_PORT || "11436", 10);
 const PROXY_HOST = "127.0.0.1";
 let _mode = "invert"; // invert | passthrough
-// v11: DAO_MODE 环境变量 · detached process 启动时传入初始模式
-if (process.env.DAO_MODE) {
-  const _envMode = process.env.DAO_MODE.toLowerCase();
-  if (_envMode === "invert" || _envMode === "passthrough") _mode = _envMode;
+// v12.6: 模式持久化 · 对齐 windsurf `_origin_mode.txt` · 运行时切换跨重启不丢
+// 优先级: 盘 > env(DAO_MODE) > 默认 invert (与 windsurf _loadModeFromDisk()||env||默认 一致)
+const _MODE_FILE = path.join(__dirname, "_origin_mode.txt");
+const _MODE_VALID = new Set(["invert", "passthrough"]);
+function _loadModeFromDisk() {
+  try {
+    if (fs.existsSync(_MODE_FILE)) {
+      const v = fs.readFileSync(_MODE_FILE, "utf8").trim().toLowerCase();
+      if (_MODE_VALID.has(v)) return v;
+    }
+  } catch {}
+  return null;
+}
+function _saveModeToDisk(mode) {
+  try {
+    if (_MODE_VALID.has(mode)) fs.writeFileSync(_MODE_FILE, mode, { mode: 0o600 });
+  } catch {}
+}
+{
+  const _diskMode = _loadModeFromDisk();
+  const _envMode = process.env.DAO_MODE
+    ? process.env.DAO_MODE.toLowerCase()
+    : null;
+  _mode = _diskMode || (_MODE_VALID.has(_envMode) ? _envMode : null) || "invert";
 }
 let _server = null;
 let _activePort = PROXY_PORT; // 实际监听端口, module.exports.start()时更新
@@ -37,6 +57,55 @@ let _startTime = Date.now(); // 代理启动时间
 let _reqTotal = 0; // 总请求计数
 let _captureCount = 0; // DAO注入计数
 let _injectsCount = 0; // DAO注入计数 · 供 /origin/sig 变化检测
+// v12.6: 遥测持久化 + 分类计数 · 对齐 windsurf _lastinject.json/_injectsbykind.json
+// 跨重启累计 · 按 RPC 路径(json/cbor)分类 · 供 webview 本源观照
+let _injectsByKind = {}; // { json: n, cbor: n }
+let _lastInjectAt = 0; // 最近一次注入时间戳(ms)
+const _STATS_FILE = path.join(__dirname, "_dao_stats.json");
+function _loadStats() {
+  try {
+    if (fs.existsSync(_STATS_FILE)) {
+      const s = JSON.parse(fs.readFileSync(_STATS_FILE, "utf8"));
+      if (s && typeof s === "object") {
+        _captureCount = Number(s.capture_count) || 0;
+        _injectsCount = Number(s.injects_count) || 0;
+        _injectsByKind =
+          s.by_kind && typeof s.by_kind === "object" ? s.by_kind : {};
+        _lastInjectAt = Number(s.last_inject_at) || 0;
+      }
+    }
+  } catch {}
+}
+let _statsSaveTimer = null;
+function _saveStats() {
+  // 防抖 · 不在热路径同步写盘 · 二十二章「少则得」
+  if (_statsSaveTimer) return;
+  _statsSaveTimer = setTimeout(() => {
+    _statsSaveTimer = null;
+    try {
+      fs.writeFileSync(
+        _STATS_FILE,
+        JSON.stringify({
+          capture_count: _captureCount,
+          injects_count: _injectsCount,
+          by_kind: _injectsByKind,
+          last_inject_at: _lastInjectAt,
+        }),
+        { mode: 0o600 },
+      );
+    } catch {}
+  }, 2000);
+  if (_statsSaveTimer.unref) _statsSaveTimer.unref();
+}
+// 统一注入计数入口 · kind ∈ {json, cbor} · 累计 + 分类 + 防抖落盘
+function _bumpInject(kind) {
+  _injectsCount++;
+  _captureCount++;
+  _injectsByKind[kind] = (_injectsByKind[kind] || 0) + 1;
+  _lastInjectAt = Date.now();
+  _saveStats();
+}
+_loadStats();
 let _lastPromptData = null; // 本源观照: 最近一次注入后的请求体快照
 let _relayProc = null; // Relay子进程 (独立Node.js, 绕过Chromium网络栈)
 let _relayRequestCount = 0; // Relay请求计数
@@ -248,7 +317,25 @@ const CANON_DIR = (() => {
 // DAO 经文载入 · 帛书《老子》道藏《阴符经》
 // v10: 经文模式 — "laozi"(帛书老子) | "yinfu"(阴符经) | "full"(全经)
 // ═══════════════════════════════════════════════════════════════════════════
-let _scriptureMode = "full"; // "laozi" | "yinfu" | "full"
+// v12.6: 经文模式持久化 · 与 _mode 同源 · 运行时换经跨重启不丢
+const _SCRIPTURE_FILE = path.join(__dirname, "_scripture_mode.txt");
+const _SCRIPTURE_VALID = new Set(["laozi", "yinfu", "full"]);
+function _loadScriptureFromDisk() {
+  try {
+    if (fs.existsSync(_SCRIPTURE_FILE)) {
+      const v = fs.readFileSync(_SCRIPTURE_FILE, "utf8").trim().toLowerCase();
+      if (_SCRIPTURE_VALID.has(v)) return v;
+    }
+  } catch {}
+  return null;
+}
+function _saveScriptureToDisk(mode) {
+  try {
+    if (_SCRIPTURE_VALID.has(mode))
+      fs.writeFileSync(_SCRIPTURE_FILE, mode, { mode: 0o600 });
+  } catch {}
+}
+let _scriptureMode = _loadScriptureFromDisk() || "full"; // "laozi" | "yinfu" | "full"
 const _CANON_PARTS = { de: "", dao: "", yinfu: "" }; // 各经文独立缓存
 
 function _loadCanonParts() {
@@ -314,6 +401,7 @@ let DAO_CANON = _buildCanonForMode(_scriptureMode);
 function setScriptureMode(mode) {
   if (!["laozi", "yinfu", "full"].includes(mode)) return false;
   _scriptureMode = mode;
+  _saveScriptureToDisk(mode); // v12.6: 落盘 · 跨重启恢复
   DAO_CANON = _buildCanonForMode(mode);
   // v10.3.1: 同步更新 DAO_HEADER / TAO_SENTINEL
   DAO_HEADER = _getDaoHeader();
@@ -1264,6 +1352,8 @@ function handleRequest(req, res) {
           req_total: _reqTotal,
           capture_count: _captureCount,
           injects_count: _injectsCount,
+          injects_by_kind: _injectsByKind, // v12.6: 按 RPC 路径分类
+          last_inject_at: _lastInjectAt,
           scripture_mode: _scriptureMode,
           regions: Object.keys(REAL_ENDPOINTS),
         }),
@@ -1276,7 +1366,10 @@ function handleRequest(req, res) {
       req.on("end", () => {
         try {
           const b = JSON.parse(Buffer.concat(chunks).toString());
-          if (b.mode === "invert" || b.mode === "passthrough") _mode = b.mode;
+          if (b.mode === "invert" || b.mode === "passthrough") {
+            _mode = b.mode;
+            _saveModeToDisk(_mode); // v12.6: 落盘 · 跨重启恢复(对齐 windsurf _origin_mode.txt)
+          }
         } catch {}
         res.end(JSON.stringify({ ok: true, mode: _mode }));
         // v10: 通知SSE客户端 mode 变化
@@ -1369,6 +1462,70 @@ function handleRequest(req, res) {
       );
       return;
     }
+    // v12.6: /origin/verify · 全链路自检(自足) · 对齐 windsurf wam.verifyEndToEnd
+    // 不打 AWS · 构造样例官方 SP → _isolateDao → 断言隔离生效 · 道隐无名之证
+    if (reqPath === "/origin/verify" && req.method === "GET") {
+      const checks = [];
+      try {
+        const sampleSP =
+          "<key_kiro_features>\nYou are Kiro, an AI-powered development environment.\n" +
+          "<system_information>\nOperating System: Windows 11\nPlatform: win32\nShell: bash\n</system_information>\n" +
+          "<model_information>\nName: claude-sonnet\n</model_information>\n" +
+          "<current_context>\nMachine ID: test-machine\nWhen the user refers to this file, do X.\n</current_context>\n" +
+          "</key_kiro_features>\n" +
+          "<autonomy_modes>You are Kiro and must follow these rules.</autonomy_modes>\n" +
+          "<steering>steering-files behavior</steering>";
+        const iso = _isolateDao(sampleSP);
+        const out = iso && iso.text ? iso.text : "";
+        const kiroHits = (out.match(/kiro/gi) || []).length;
+        const canonProbe = (DAO_CANON || "").slice(0, 12);
+        const purified = _purifyContent(
+          "I'm Kiro, an AI-powered development environment.",
+        );
+        checks.push({
+          name: "isolate_modified",
+          pass: !!(iso && iso.modified),
+        });
+        checks.push({
+          name: "starts_with_tao_sentinel",
+          pass: out.startsWith(TAO_SENTINEL),
+        });
+        checks.push({
+          name: "canon_present",
+          pass: !!canonProbe && out.includes(canonProbe),
+        });
+        checks.push({ name: "zero_kiro_in_isolated_sp", pass: kiroHits === 0 });
+        checks.push({
+          name: "data_points_preserved",
+          pass: out.includes("Windows 11") && out.includes("test-machine"),
+        });
+        checks.push({
+          name: "response_purify_strips_kiro",
+          pass: !/kiro/i.test(purified),
+        });
+        checks.push({
+          name: "idempotent_no_double_inject",
+          pass: _isolateDao(out).modified === false,
+        });
+      } catch (e) {
+        checks.push({ name: "exception", pass: false, error: e.message });
+      }
+      const allPass = checks.every((c) => c.pass);
+      res.end(
+        JSON.stringify({
+          ok: allPass,
+          version: PROXY_VERSION,
+          mode: _mode,
+          scripture_mode: _scriptureMode,
+          canon_chars: DAO_CANON.length,
+          checks,
+        }),
+      );
+      _log(
+        `  🧪 verifyEndToEnd: ${allPass ? "PASS" : "FAIL"} (${checks.filter((c) => c.pass).length}/${checks.length})`,
+      );
+      return;
+    }
     // /origin/sig · 变化签名 · 供 webview sigTick 轮询检测变化
     // v10: 增加 custom_sig/custom_sp_at · 一签观全境
     if (reqPath === "/origin/sig" && req.method === "GET") {
@@ -1386,6 +1543,7 @@ function handleRequest(req, res) {
           custom_sp: !!(_customSP && _customSP.sp),
           custom_sp_at: _customSP && _customSP.at ? _customSP.at : 0,
           injects_count: _injectsCount,
+          injects_by_kind: _injectsByKind, // v12.6: 按 RPC 路径分类
         }),
       );
       return;
@@ -2196,8 +2354,7 @@ function handleRequest(req, res) {
 
             daoInjected = daoChanges > 0 || spFound;
             if (daoChanges > 0) {
-              _injectsCount++;
-              _captureCount++; // v10.3.1: JSON注入也计入capture_count
+              _bumpInject("json"); // v12.6: 累计+分类+防抖落盘(原 _injectsCount++/_captureCount++)
               body = Buffer.from(JSON.stringify(obj), "utf8");
               // v10: 本源观照 — 保存注入后的请求体快照
               try {
@@ -2260,8 +2417,7 @@ function handleRequest(req, res) {
             if (modified) {
               body = newBody;
               daoInjected = true;
-              _injectsCount++;
-              _captureCount++;
+              _bumpInject("cbor"); // v12.6: 累计+分类+防抖落盘(原 _injectsCount++/_captureCount++)
               // v10: 本源观照 — 保存注入后的请求体快照
               try {
                 _lastPromptData = {
@@ -2811,8 +2967,11 @@ function start() {
 module.exports = {
   start(opts) {
     const port = (opts && opts.port) || PROXY_PORT;
-    const mode = (opts && opts.mode) || "invert";
-    _mode = mode;
+    // v12.6: 盘 > opts > 默认 · detached 重生时恢复上次运行时模式(对齐 windsurf)
+    const _optMode =
+      opts && _MODE_VALID.has(opts.mode) ? opts.mode : null;
+    _mode = _loadModeFromDisk() || _optMode || "invert";
+    _saveModeToDisk(_mode); // 首次播种亦落盘 · 之后运行时切换为准
     return new Promise((resolve, reject) => {
       _server = http.createServer(handleRequest);
       _activePort = port;
