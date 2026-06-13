@@ -21,7 +21,7 @@ const child_process = require("child_process");
 // 本源隔离 · 唯走 AWS Q 官方后端 (codewhisperer-streaming) · 绝不路由任何第三方模型。
 // 一切官方注入的系统提示/身份/工具规则, 在请求侧 (客户端 → AWS Q 之间) 就地隔离替换
 // 为帛书《老子》道藏《阴符经》 + 最简必要工具。道本自然, 为而弗恃。
-const PROXY_VERSION = "12.1.0";
+const PROXY_VERSION = "12.2.0";
 
 const PROXY_PORT = parseInt(process.env.DAO_PORT || "11436", 10);
 const PROXY_HOST = "127.0.0.1";
@@ -1960,13 +1960,10 @@ function handleRequest(req, res) {
                 // ── DAO SP已注入检测: 以纯道头(TAO_SENTINEL)开头 → SP已注入，无需替换但需标记 ──
                 // v12.1: 纯道头 = "你本無名，名可名也，非恒名也..." (绝无"Kiro"身份)
                 const isDaoSP = content.startsWith(TAO_SENTINEL);
-                // ── 兜底: 长文本(>300字) + 非workspace + 非fileTree + 非DAO已注入 → 强制视为SP ──
-                const isLongNonData =
-                  content.length > 300 &&
-                  !content.startsWith("<fileTree>") &&
-                  !content.includes("<fileTree>") &&
-                  !isDaoSP &&
-                  !content.startsWith("You are operating in a workspace");
+                // ── 仅替换真正的官方SP(_isSystemPrompt: 关键词/Markdown标题命中) ──
+                // v12.2: 移除"长文本>300兜底"。该启发式会误伤真实用户消息——
+                //   用户的请求常因附带 <EnvironmentContext> 而 >300字, 被错判为SP并整段替换成经文,
+                //   致模型读不到用户本意(history里只剩经文)。隔离只针对官方本源, 不动用户之言。
                 if (isDaoSP) {
                   // DAO SP已注入 — 无需替换，标记spFound即可
                   // daoInjected = daoChanges > 0 || spFound → 标记已处理
@@ -1974,19 +1971,10 @@ function handleRequest(req, res) {
                   _log(
                     `  🎯 [1/5] DAO SP已注入 at history[${hi}]: ${content.length} chars (无需替换，标记spFound)`,
                   );
-                } else if (isSP || isLongNonData) {
-                  if (!isSP && isLongNonData) {
-                    _log(
-                      `  ⚡ [1/5] 兜底检测SP at history[${hi}]: ${content.length} chars (关键词未匹配, 长文本兜底)`,
-                    );
-                    _log(
-                      `  ⚡ SP前80字: "${content.substring(0, 80).replace(/\n/g, " ")}"`,
-                    );
-                  } else {
-                    _log(
-                      `  🎯 [1/5] Found SP at history[${hi}]: ${content.length} chars`,
-                    );
-                  }
+                } else if (isSP) {
+                  _log(
+                    `  🎯 [1/5] Found SP at history[${hi}]: ${content.length} chars`,
+                  );
                   spFound = true;
                   const _spBefore = content; // 保存原始SP供 _lastInject
                   const { text: injected, modified } = _injectDao(content);
@@ -2047,13 +2035,17 @@ function handleRequest(req, res) {
             }
 
             // ═══ 身份注入工具黑名单 (第3重+第4重共用) ═══
+            // 归一化键(去非字母+小写): 兼容官方 snake_case 实名与 camelCase 写法, 不漏一工具。
             const _DROP_TOOLS = new Set([
-              "kiroPowers", // "Kiro Powers" — 7003字身份标记
-              "kiro_power", // 备用名
-              "createHook", // Hook系统 — 行为指令
-              "discloseContext", // "steering files" — 行为指令
-              "invoke_sub_agent", // 子代理 — 身份锚定
+              "kiropowers", // kiro_powers — 7003字身份标记(Kiro Powers 能力系统)
+              "kiropower", // 备用名
+              "createhook", // create_hook — Hook 行为指令系统
+              "disclosecontext", // disclose_context — steering files 行为指令
+              "invokesubagent", // invoke_sub_agent — 子代理身份锚定
             ]);
+            const _isDropTool = (name) =>
+              !!name &&
+              _DROP_TOOLS.has(String(name).toLowerCase().replace(/[^a-z]/g, ""));
 
             // ═══ 第3重: 孤立toolUses清理 — 防止400 "Improperly formed request" ═══
             // v10: 不对抗AI自认 · 不替换assistant内容 · 只清理被移除工具的孤立toolUses
@@ -2064,7 +2056,7 @@ function handleRequest(req, res) {
               if (item.assistantResponseMessage?.toolUses) {
                 const origLen = item.assistantResponseMessage.toolUses.length;
                 const filtered = item.assistantResponseMessage.toolUses.filter(
-                  (tu) => !_DROP_TOOLS.has(tu.name),
+                  (tu) => !_isDropTool(tu.name),
                 );
                 if (filtered.length < origLen) {
                   if (filtered.length === 0) {
@@ -2107,7 +2099,7 @@ function handleRequest(req, res) {
                   keptTools.push(t);
                   continue;
                 }
-                if (_DROP_TOOLS.has(spec.name)) {
+                if (_isDropTool(spec.name)) {
                   droppedTools++;
                   continue;
                 }
