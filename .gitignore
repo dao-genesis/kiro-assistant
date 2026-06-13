@@ -13,3 +13,43 @@ vendor/kiro-dao-proxy.log
 vendor/_origin_mode.txt
 vendor/_scripture_mode.txt
 vendor/_dao_stats.json
+# v20 诊断转储 (DAO_DEBUG=1 时生成 · 不入库)
+vendor/_body_dump.bin
+vendor/_mcp_dump.json
+vendor/_raw_all_frames.json
+vendor/_raw_kiro_frames.json
+# 历史残留: 调试脚本/诊断JSON/旧版代理 (去芜存精 · 永不入库)
+vendor/_analyze_*
+vendor/_check_*
+vendor/_deploy_*
+vendor/_diag_*
+vendor/_e2e_*
+vendor/_find_*
+vendor/_verify_*
+vendor/_restart_*
+vendor/_search_*
+vendor/_full_audit*
+vendor/_status_check*
+vendor/_tail_log*
+vendor/_wait_restart*
+vendor/_quit_*
+vendor/_ping*
+vendor/_11484_*
+vendor/_port_*
+vendor/_proxy_proc*
+vendor/_auth_*
+vendor/_anchor_analysis*
+vendor/_ext_analysis*
+vendor/_critical_paths*
+vendor/_dao_paths*
+vendor/_path_logic*
+vendor/_inject_logic*
+vendor/_relay_logic*
+vendor/_settings_search*
+vendor/_canon_deploy_result*
+vendor/_last_log*
+vendor/_v19*
+vendor/_v191*
+vendor/kiro-dao-proxy_v*.js
+# 隔离备份目录 (去芜存精时移出的残留 · 不入库)
+dao_quarantine_*/
