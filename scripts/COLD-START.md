@@ -20,10 +20,22 @@
   - 内置扩展：`<KiroRoot>\resources\app\extensions\kiro-dao-agent`（**本扩展的落点**）。
   - 用户设置：`%APPDATA%\Kiro\User\settings.json`（proxy 锚定 `codewhisperer.config.endpoints` 写这里）。
 
-## 2. 登录账号（拿到可用的 AWS Q 凭证）
-- Kiro 启动后按其引导登录，登录态由 Kiro 自身持有；proxy **不碰登录**，只在请求经过时复用 Kiro 已有的 `authorization` 头。
-- 坑：部分账号会被 Kiro 后端拒绝（换可用账号即可）。手输邮箱时 `@` 常被终端吞，用剪贴板粘贴。
-- 验证登录：Kiro 内能正常发起一次对话即说明 AWS Q 凭证可用。
+## 2. 登录账号（拿到可用的官方凭证）
+proxy **不碰登录**，只在请求经过时复用 Kiro 已有的 `authorization` 头。两条路：
+
+**(A) 免 GUI 手动登录 —— 注入导出的账号凭证（推荐，实测可行）**
+```bash
+node scripts/inject-auth.js <accounts_*.json> [--email someone@x.com]
+```
+- `accounts_*.json` 是 Kiro 账号导出文件（包含 `clientId` / `clientSecret` / `refreshToken` / `region`）。
+- 脚本仅调官方 OIDC (`oidc.<region>.amazonaws.com/token`) 用 refreshToken 换鲜活 accessToken，写入 `~/.aws/sso/cache/kiro-auth-token.json`；启动 Kiro 即为登录态。
+- 验证：Kiro 右下角出现 "Kiro Free X/50" 用量计数。
+
+**(B) GUI 手动登录** —— Kiro 启动后按其引导登录。手输邮箱时 `@` 常被终端吞，用剪贴板粘贴。
+
+> **profileArn**：免费 BuilderId 账号的 profileArn 由 Kiro 登录握手自带在请求体内（`conversationState.profileArn`），代理原样透传即可；
+> **无需也无法** 从 `ListAvailableProfiles` 获取（免费层返 AccessDenied）。`runtime.*.kiro.dev/generateAssistantResponse` 带此 profileArn 即返 200。
+> **限速**：短时间大量直接探测官方 API 会触发 AWS "unusual activity" 临时锁账；正常 GUI 使用不受影响，冷却后恢复。
 
 ## 3. 部署插件（一条命令）
 ```powershell
@@ -62,9 +74,10 @@ GUI 实测补充（人工在 Kiro 对话框里问）：
 ## 6. 关键路径速查
 | 用途 | 路径 |
 |---|---|
-| 代理核心 | `vendor/kiro-dao-proxy.js`（`PROXY_VERSION = 12.1.0`，`invert` / `full` 经文） |
+| 代理核心 | `vendor/kiro-dao-proxy.js`（`PROXY_VERSION = 12.5.0`，`invert` / `full` 经文；流式 `runtime.*.kiro.dev` / 控制面 `management.*.kiro.dev`） |
 | 扩展宿主 | `extension.js`（fork 代理 + 面板预览，头与 proxy 一致） |
 | 经文本源 | `vendor/bundled-origin/_silk_de.txt` `_silk_dao.txt` `_yinfu.txt` |
+| 登录注入 | `scripts/inject-auth.js`（免 GUI 登录，读导出 accounts 文件） |
 | 部署 | `scripts/deploy-plugin.ps1`（推荐）/ 根 `install.cmd` |
 | 验证 | `scripts/verify-isolation.ps1` |
 | 隔离落证 | `<kiro-dao-agent>\vendor\_dao_isolated_sp.txt`、日志 `kiro-dao-proxy.log` |
