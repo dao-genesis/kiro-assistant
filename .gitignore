@@ -9,3 +9,7 @@ vendor/_body_post_*.json
 vendor/_custom_sp.json
 vendor/_dao_isolated_sp.txt
 vendor/kiro-dao-proxy.log
+# v12.6 运行时状态持久化 (代理自动生成 · 不入库)
+vendor/_origin_mode.txt
+vendor/_scripture_mode.txt
+vendor/_dao_stats.json

@@ -37,7 +37,7 @@ const os = require("node:os");
 const crypto = require("node:crypto");
 const { EventEmitter } = require("node:events");
 
-const PKG_VERSION = "12.1.0";
+const PKG_VERSION = "12.6.0";
 const DEFAULT_PORT = 11436;
 
 // ═══════════════════════════ DAO Quotes ═══════════════════════════
@@ -1147,6 +1147,48 @@ async function cmdSelftest() {
   out.appendLine(`  2. 向 Kiro agent 问 '你是谁'`);
   out.appendLine(`  3. 期答含 '道'/'无为'/'自然' (帛书德道经 SP 注入成功)`);
   out.appendLine("════════════════════════════════════════\n");
+}
+
+// v12.6: 全链路自检 · 对齐 windsurf wam.verifyEndToEnd · 自足证隔离(不打 AWS)
+async function cmdVerifyEndToEnd() {
+  const out = logger();
+  out.show(true);
+  out.appendLine("");
+  out.appendLine("════════════════════════════════════════");
+  out.appendLine(`  道Agent · 全链路自检(verifyEndToEnd) · ${new Date().toISOString()}`);
+  out.appendLine("════════════════════════════════════════");
+  const { port } = cfg();
+  try {
+    const r = await httpGetJson(`http://127.0.0.1:${port}/origin/verify`, 4000);
+    if (!r || !Array.isArray(r.checks)) {
+      out.appendLine("  ✗ /origin/verify 无响应 (代理未启?)");
+      vscode.window.showWarningMessage("道Agent 自检: 代理未响应");
+      return;
+    }
+    out.appendLine(
+      `  v=${r.version} · mode=${r.mode} · 经文=${r.scripture_mode}(${r.canon_chars}字)`,
+    );
+    const passed = r.checks.filter((c) => c.pass).length;
+    for (const c of r.checks) {
+      out.appendLine(`  ${c.pass ? "✓" : "✗"} ${c.name}${c.error ? " · " + c.error : ""}`);
+    }
+    out.appendLine(
+      `\n  结论: ${r.ok ? "PASS" : "FAIL"} (${passed}/${r.checks.length})`,
+    );
+    out.appendLine("════════════════════════════════════════\n");
+    if (r.ok) {
+      vscode.window.showInformationMessage(
+        `道Agent 全链路自检 PASS (${passed}/${r.checks.length}) · 隔离生效`,
+      );
+    } else {
+      vscode.window.showWarningMessage(
+        `道Agent 全链路自检 FAIL (${passed}/${r.checks.length}) · 见输出面板`,
+      );
+    }
+  } catch (e) {
+    out.appendLine(`  ✗ verify 异: ${e.message}`);
+    vscode.window.showErrorMessage(`道Agent 自检失败: ${e.message}`);
+  }
 }
 
 async function cmdTermExec() {
@@ -2280,6 +2322,10 @@ function activate(ctx) {
       vscode.commands.registerCommand("kiro.dao.toggleMode", cmdToggle),
       vscode.commands.registerCommand("kiro.dao.openPreview", cmdOpenPreview),
       vscode.commands.registerCommand("kiro.dao.selftest", cmdSelftest),
+      vscode.commands.registerCommand(
+        "kiro.dao.verifyEndToEnd",
+        cmdVerifyEndToEnd,
+      ),
       vscode.commands.registerCommand("kiro.dao.term.exec", cmdTermExec),
       vscode.commands.registerCommand("kiro.dao.term.list", cmdTermList),
       vscode.commands.registerCommand("kiro.dao.term.close", cmdTermClose),
