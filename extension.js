@@ -1,4 +1,4 @@
-// extension.js · kiro-dao-agent v20.1.0 · 太上不知有之 · 无为而无以为
+// extension.js · kiro-dao-agent v1.0.0 · 太上不知有之 · 无为而无以为 · 道生一
 //
 // 道德经 · 第十七章: "太上, 不知有之; 其次, 亲而誉之"
 // 道德经 · 第十七章: "功成事遂, 百姓皆谓我自然"
@@ -37,7 +37,7 @@ const os = require("node:os");
 const crypto = require("node:crypto");
 const { EventEmitter } = require("node:events");
 
-const PKG_VERSION = "20.1.0";
+const PKG_VERSION = "1.0.0";
 const DEFAULT_PORT = 11436;
 
 // ═══════════════════════════ DAO Quotes ═══════════════════════════
