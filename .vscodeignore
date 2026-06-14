@@ -26,6 +26,9 @@ node_modules/**
 **/INDEX.md
 # 去芜存精: dev/ops 脚本与会话产物不入包 (运行期文件由 .gitignore 排除)
 scripts/**
+# 主页/封面资源只服务 README 与 GitHub Pages，不入插件包
+docs/**
+media/video-cover.jpg
 PROJECT-STATUS.md
 **/_origin_mode.txt
 **/_scripture_mode.txt
