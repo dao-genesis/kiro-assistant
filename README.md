@@ -6,7 +6,7 @@ the official system prompt / identity / tool rules **in-flight** with the silk-t
 to the **official AWS Q backend only** — never routed to any third-party model.
 Cross-platform, zero hardcoding, install once, works everywhere.
 
-> **v20.1.0** — consolidation build (迁移整理 · 去芜存精). Pure source isolation
+> **v1.0.0** — 归一首发 / consolidation baseline (迁移整理 · 去芜存精 · 道生一·得一). Pure source isolation
 > (请求侧 system-prompt 全替换 · 响应侧身份净化 · 历史 SP 隔离 · 工具隔离 · 幂等防重注),
 > with **mode persistence**, **classified telemetry**, and — critically for users on
 > constrained networks — a **VPN-aware relay subprocess** that bypasses the Electron/
@@ -21,7 +21,7 @@ Grab the latest packaged extension from **[Releases](https://github.com/zhouyouk
 
 | Extension | What it does | Latest | Download |
 | --- | --- | --- | --- |
-| **kiro-assistant**（Dao Agent · 反代换示插）| Reverse-proxies Kiro's outbound API; replaces the official system prompt / identity / tool rules with the Dao canon, keeps tools usable, stays on official AWS Q. | `20.1.0` | [Releases](https://github.com/zhouyoukang1234-spec/kiro-assistant/releases) |
+| **kiro-assistant**（Dao Agent · 反代换示插）| Reverse-proxies Kiro's outbound API; replaces the official system prompt / identity / tool rules with the Dao canon, keeps tools usable, stays on official AWS Q. | `1.0.0` | [Releases](https://github.com/zhouyoukang1234-spec/kiro-assistant/releases) |
 
 > Companion project for Windsurf IDE: **[windsurf-assistant](https://github.com/zhouyoukang1234-spec/windsurf-assistant)** (same isolation philosophy, gRPC/protobuf wire protocol).
 

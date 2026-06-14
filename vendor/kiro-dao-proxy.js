@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Kiro DAO Proxy v20.1.0 · 为道者日损 · 经文即一切
+// Kiro DAO Proxy v1.0.0 · 为道者日损 · 经文即一切 · 道生一·得一以为天下正
 // ═══════════════════════════════════════════════════════════════════════════
 // 通用透明代理: 自动适配任意用户/环境/平台 · 软编码 · 零硬编码
 // 不破Kiro本体 · 仅于通道中注入道魂 · 为学者日益 问道者日损
@@ -29,7 +29,7 @@ const child_process = require("child_process");
 // ═══════════════════════════════════════════════════════════════════════════
 // 配置
 // ═══════════════════════════════════════════════════════════════════════════
-const PROXY_VERSION = "20.1.0";
+const PROXY_VERSION = "1.0.0";
 const PROXY_PORT = parseInt(process.env.DAO_PORT || "11454", 10);
 const PROXY_HOST = "127.0.0.1";
 // 软编码诊断开关 — 默认关闭 · 道法自然 · 不破坏用户正常使用体验
@@ -3038,7 +3038,7 @@ function handleRequest(req, res) {
             agentTaskType: "vibe",
             history_count: preservedHistory.length,
             sp_injection:
-              "invertSP v20.0.0 (经文即一切 · # Scripture + canon · 无对抗性规则)",
+              "invertSP v1.0.0 (经文即一切 · # Scripture + canon · 无对抗性规则)",
             sp_prefix_len: spPrefix.length,
             user_content_len: userContent.length,
             tools_count: keptTools.length,
@@ -3046,7 +3046,7 @@ function handleRequest(req, res) {
               .map((t) => t.toolSpecification?.name)
               .filter(Boolean),
             dao_changes: 1,
-            mode: "invertSP v20.0.0 为道者日损",
+            mode: "invertSP v1.0.0 为道者日损",
           };
 
           // 保存诊断文件 (debug-gated)
