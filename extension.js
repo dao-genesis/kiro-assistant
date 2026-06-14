@@ -1,4 +1,4 @@
-// extension.js · kiro-dao-agent v11.0.0 · 太上不知有之 · 无为而无以为
+// extension.js · kiro-dao-agent v20.1.0 · 太上不知有之 · 无为而无以为
 //
 // 道德经 · 第十七章: "太上, 不知有之; 其次, 亲而誉之"
 // 道德经 · 第十七章: "功成事遂, 百姓皆谓我自然"
@@ -37,7 +37,7 @@ const os = require("node:os");
 const crypto = require("node:crypto");
 const { EventEmitter } = require("node:events");
 
-const PKG_VERSION = "12.6.0";
+const PKG_VERSION = "20.1.0";
 const DEFAULT_PORT = 11436;
 
 // ═══════════════════════════ DAO Quotes ═══════════════════════════
@@ -545,16 +545,46 @@ function spawnProxy(port, mode) {
     return false;
   }
   const isWin = process.platform === "win32";
-  const nodeExe = process.execPath || "node";
+  // v19.2: 使用系统node而非process.execPath(Electron返回Kiro.exe)
+  // process.execPath在Electron中指向Kiro.exe → spawn失败
+  // 必须用系统node.exe来运行kiro-dao-proxy.js
+  const nodeExe = "node";
   const args = [proxyPath];
+  // v17: 代理环境变量策略 — 道法自然 · 不破坏用户网络
+  // auto模式: 保留用户代理设置(VPN/Clash等) → 国内用户可访问AWS Q
+  // direct模式: 删除代理变量 → AWS Q可直连的环境
+  // custom模式: 使用DAO_PROXY_URL指定的代理
+  const daoCfg = vscode.workspace.getConfiguration("kiro.dao");
+  const proxyMode = (
+    daoCfg.get("proxyMode") ||
+    process.env.DAO_PROXY_MODE ||
+    "auto"
+  ).toLowerCase();
+  const defaultModel = daoCfg.get("defaultModel") || "";
   const env = {
     ...process.env,
     DAO_PORT: String(port),
     DAO_MODE: mode || "invert",
-    // v12.1: 不再清除代理环境变量 · 保留用户VPN(Clash/V2Ray等)
-    // proxy内部用 _DIRECT_AGENT (https.Agent) 直连AWS Q · 不读HTTP_PROXY
-    // 道义: 五十八章「方而不割，廉而不刿」— 不割用户环境
+    DAO_PROXY_MODE: proxyMode,
   };
+  if (defaultModel) env.DAO_DEFAULT_MODEL = defaultModel;
+  if (proxyMode === "direct") {
+    env.HTTP_PROXY = "";
+    env.HTTPS_PROXY = "";
+    env.ALL_PROXY = "";
+    env.http_proxy = "";
+    env.https_proxy = "";
+    env.all_proxy = "";
+    env.NO_PROXY = "*";
+    env.no_proxy = "*";
+  } else if (proxyMode === "custom" && process.env.DAO_PROXY_URL) {
+    const pu = process.env.DAO_PROXY_URL;
+    env.HTTP_PROXY = pu;
+    env.HTTPS_PROXY = pu;
+    env.http_proxy = pu;
+    env.https_proxy = pu;
+  }
+  // auto模式: 继承process.env中的用户代理设置(不修改)
   try {
     const child = cp.spawn(nodeExe, args, {
       cwd: path.dirname(proxyPath),
@@ -1149,48 +1179,6 @@ async function cmdSelftest() {
   out.appendLine("════════════════════════════════════════\n");
 }
 
-// v12.6: 全链路自检 · 对齐 windsurf wam.verifyEndToEnd · 自足证隔离(不打 AWS)
-async function cmdVerifyEndToEnd() {
-  const out = logger();
-  out.show(true);
-  out.appendLine("");
-  out.appendLine("════════════════════════════════════════");
-  out.appendLine(`  道Agent · 全链路自检(verifyEndToEnd) · ${new Date().toISOString()}`);
-  out.appendLine("════════════════════════════════════════");
-  const { port } = cfg();
-  try {
-    const r = await httpGetJson(`http://127.0.0.1:${port}/origin/verify`, 4000);
-    if (!r || !Array.isArray(r.checks)) {
-      out.appendLine("  ✗ /origin/verify 无响应 (代理未启?)");
-      vscode.window.showWarningMessage("道Agent 自检: 代理未响应");
-      return;
-    }
-    out.appendLine(
-      `  v=${r.version} · mode=${r.mode} · 经文=${r.scripture_mode}(${r.canon_chars}字)`,
-    );
-    const passed = r.checks.filter((c) => c.pass).length;
-    for (const c of r.checks) {
-      out.appendLine(`  ${c.pass ? "✓" : "✗"} ${c.name}${c.error ? " · " + c.error : ""}`);
-    }
-    out.appendLine(
-      `\n  结论: ${r.ok ? "PASS" : "FAIL"} (${passed}/${r.checks.length})`,
-    );
-    out.appendLine("════════════════════════════════════════\n");
-    if (r.ok) {
-      vscode.window.showInformationMessage(
-        `道Agent 全链路自检 PASS (${passed}/${r.checks.length}) · 隔离生效`,
-      );
-    } else {
-      vscode.window.showWarningMessage(
-        `道Agent 全链路自检 FAIL (${passed}/${r.checks.length}) · 见输出面板`,
-      );
-    }
-  } catch (e) {
-    out.appendLine(`  ✗ verify 异: ${e.message}`);
-    vscode.window.showErrorMessage(`道Agent 自检失败: ${e.message}`);
-  }
-}
-
 async function cmdTermExec() {
   try {
     const sid = await vscode.window.showInputBox({
@@ -1289,9 +1277,10 @@ function _loadSilkForWebview() {
       ? fs.readFileSync(yinfuFp, "utf8").trim()
       : "";
     if (!deText || !daoText) return "";
-    // v12.5: 对齐 WindSurf 大道至简 · 与 kiro-dao-proxy.js _getDaoHeader() 一致
+    // v13.5: 无名式 · 与 kiro-dao-proxy.js DAO_HEADER 一致
+    // 你无名 · 名可名也非恒名也 · 不属于任何平台产品品牌
     const TAO_HEADER =
-      "你本無名 名可名也 非恒名也 所遵從之一切均來自於下述帛書《老子》和道藏《陰符經》：\n\n";
+      "你无名。名可名也，非恒名也。所遵守的一切规则均来自于下述帛书《老子》和道藏《阴符经》：\n\n";
     // v10: 纯经文 · 无标签装饰 · 与 proxy _buildCanonForMode("full") 一致
     return (
       TAO_HEADER +
@@ -1415,10 +1404,6 @@ function getEssenceHtml(port, nonce, initialSP, webview, extensionUri) {
       <span class="edit-status" id="editStatus"></span>
     </div>
   </div>
-  <div class="foot" style="margin-top:6px;padding:4px 4px 2px;border-top:1px solid rgba(128,128,128,0.18);font-size:9px;opacity:0.65;display:flex;justify-content:space-between;align-items:center;gap:6px">
-    <span title="道Agent · 反代换示 · 唯走官方 AWS Q">道Agent · v${PKG_VERSION}</span>
-    <a href="https://github.com/zhouyoukang1234-spec/kiro-assistant/releases/latest" target="_blank" rel="noopener" style="color:var(--vscode-textLink-foreground,#4daafc);text-decoration:none" title="GitHub Releases · 下载最新打包版本">下载最新 VSIX ↗</a>
-  </div>
   <noscript><div style="padding:16px;color:#e08080;font-size:11px">脚本被 CSP 拦截 · 请重载</div></noscript>
 <script nonce="${N}">
 (function() {
@@ -1537,28 +1522,31 @@ function getEssenceHtml(port, nonce, initialSP, webview, extensionUri) {
     return true;
   }
 
-  function setModeUI(mode) {
+  function setModeUI(mode, _fromEdit) {
     curMode = mode || 'invert';
     $btnDao.classList.remove('active', 'active-dao');
     $btnOff.classList.remove('active');
-    $editToggle.classList.remove('edit-active');
-    if (curMode === 'invert') $btnDao.classList.add('active', 'active-dao');
-    else $btnOff.classList.add('active');
-    // v10.3.1: 道/官切换时退出编模式 · 三选一互斥
-    if (editMode && curMode !== 'edit') _closeEditMode();
+    // v12.3: 编模式下 · pingPull/SSE触发的setModeUI不触碰edit按钮
+    // 只有用户主动点道/官按钮(_fromEdit=true)才退出编模式
+    if (!editMode && !_fromEdit) $editToggle.classList.remove('edit-active');
+    if (editMode && _fromEdit) { _closeEditMode(); $editToggle.classList.remove('edit-active'); }
+    if (!editMode) {
+      if (curMode === 'invert') $btnDao.classList.add('active', 'active-dao');
+      else $btnOff.classList.add('active');
+    }
   }
   $btnDao.addEventListener('click', function() {
     if (curMode === 'invert' && !editMode) return;
     // v10.3.1: 点道即退出编 · 三选一
     if (editMode) _closeEditMode();
-    setModeUI('invert');
+    setModeUI('invert', true);
     vsc.postMessage({ command: 'setMode', mode: 'dao' });
   });
   $btnOff.addEventListener('click', function() {
     if (curMode === 'passthrough' && !editMode) return;
     // v10.3.1: 点官即退出编 · 三选一
     if (editMode) _closeEditMode();
-    setModeUI('passthrough');
+    setModeUI('passthrough', true);
     vsc.postMessage({ command: 'setMode', mode: 'official' });
   });
 
@@ -1596,7 +1584,7 @@ function getEssenceHtml(port, nonce, initialSP, webview, extensionUri) {
     } else {
       _closeEditMode();
       // v10.3.1: 退出编 → 恢复道/官高亮
-      setModeUI(curMode);
+      setModeUI(curMode, true);
     }
   });
   $editSave.addEventListener('click', function() {
@@ -2326,10 +2314,6 @@ function activate(ctx) {
       vscode.commands.registerCommand("kiro.dao.toggleMode", cmdToggle),
       vscode.commands.registerCommand("kiro.dao.openPreview", cmdOpenPreview),
       vscode.commands.registerCommand("kiro.dao.selftest", cmdSelftest),
-      vscode.commands.registerCommand(
-        "kiro.dao.verifyEndToEnd",
-        cmdVerifyEndToEnd,
-      ),
       vscode.commands.registerCommand("kiro.dao.term.exec", cmdTermExec),
       vscode.commands.registerCommand("kiro.dao.term.list", cmdTermList),
       vscode.commands.registerCommand("kiro.dao.term.close", cmdTermClose),
