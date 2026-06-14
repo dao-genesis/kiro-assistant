@@ -12,6 +12,8 @@
 
 **🌐 [打开自动播放主页（GitHub Pages · 进入即自动播放）](https://zhouyoukang1234-spec.github.io/kiro-assistant/)**
 
+**👤 [我的 B 站主页（视频链接被风控时改走这里）](https://space.bilibili.com/2114868619)**
+
 </div>
 
 > GitHub 仓库页（本 README）受平台限制无法自动播放视频；上方"自动播放主页"是一个真正的网页，进入即自动播放 B 站视频，点击可跳转 B 站原页观看。
