@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kiro Assistant · 道法自然 — 让你的 Kiro 彻底变好用</title>
+<meta name="description" content="Kiro Assistant（道 Agent）：本地透明代理，将官方系统提示词替换为道藏经文，流量仍走官方 AWS Q。视频介绍 + 下载。" />
+<link rel="icon" href="icon.png" />
+<style>
+  :root{
+    --bg0:#0a0e14; --bg1:#121821; --ink:#e8eef6; --muted:#9fb0c3;
+    --accent:#5ec6ff; --accent2:#7ef0c0; --line:rgba(255,255,255,.10);
+    --pink:#ff7aa8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 700px at 50% -10%,#16202c 0%,var(--bg0) 60%) fixed;
+    color:var(--ink); line-height:1.7; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:40px 20px 64px}
+  header{text-align:center;margin-bottom:30px}
+  .brand{font-size:13px;letter-spacing:.32em;color:var(--muted);text-transform:uppercase}
+  h1{font-size:clamp(26px,5vw,40px);margin:10px 0 6px;font-weight:800;
+     background:linear-gradient(90deg,var(--accent),var(--accent2));
+     -webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{color:var(--muted);font-size:clamp(14px,2.4vw,17px)}
+  .player{
+    position:relative;width:100%;aspect-ratio:16/9;margin:26px 0 18px;
+    border:1px solid var(--line);border-radius:16px;overflow:hidden;
+    background:#000;box-shadow:0 24px 60px rgba(0,0,0,.5)
+  }
+  .player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .btns{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:18px 0 8px}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:12px 22px;border-radius:999px;font-weight:700;font-size:15px;
+    text-decoration:none;border:1px solid var(--line);transition:.18s ease;
+    color:var(--ink);background:rgba(255,255,255,.04)
+  }
+  .btn:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.28)}
+  .btn.primary{background:linear-gradient(90deg,var(--pink),#ff5c8a);color:#1a0b12;border:0}
+  .btn.go{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#06121a;border:0}
+  .note{text-align:center;color:var(--muted);font-size:13px;margin-top:8px}
+  section{margin-top:40px;border-top:1px solid var(--line);padding-top:28px}
+  h2{font-size:20px;margin-bottom:12px;color:var(--accent2)}
+  p{color:#d6e0ec;margin-bottom:12px}
+  ul{list-style:none;display:grid;gap:10px;grid-template-columns:1fr}
+  @media(min-width:640px){ul{grid-template-columns:1fr 1fr}}
+  li{padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03);font-size:14.5px}
+  li b{color:var(--accent)}
+  code{background:rgba(255,255,255,.08);padding:2px 7px;border-radius:6px;font-size:13px}
+  footer{margin-top:46px;text-align:center;color:var(--muted);font-size:13.5px;letter-spacing:.04em}
+  a.inline{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Kiro Assistant · Dao Agent</div>
+    <h1>道法自然 · 让你的 Kiro 彻底变好用</h1>
+    <div class="sub">本地透明代理 · 道魂注入 · 仍走官方 AWS Q · 软编码 · 为变所适</div>
+  </header>
+
+  <!-- 进入即自动播放（静音）的 B 站官方播放器 -->
+  <div class="player">
+    <iframe
+      src="https://player.bilibili.com/player.html?bvid=BV1LRV26FEQa&cid=38827132515&p=1&autoplay=1&muted=1&danmaku=0&high_quality=1&as_wide=1"
+      scrolling="no" frameborder="no" framespacing="0"
+      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+      allowfullscreen="true"
+      referrerpolicy="no-referrer-when-downgrade"
+      title="Kiro+道德经阴符经 让你的Kiro彻底变好用！"></iframe>
+  </div>
+
+  <div class="btns">
+    <a class="btn primary" href="https://www.bilibili.com/video/BV1LRV26FEQa" target="_blank" rel="noopener">▶ 前往 B 站观看完整视频</a>
+    <a class="btn go" href="https://github.com/zhouyoukang1234-spec/kiro-assistant/releases" target="_blank" rel="noopener">⬇ 下载插件</a>
+    <a class="btn" href="https://github.com/zhouyoukang1234-spec/kiro-assistant" target="_blank" rel="noopener">⌂ GitHub 项目</a>
+  </div>
+  <p class="note">视频默认静音自动播放（浏览器策略）；点击播放器或上方按钮可在 B 站原页带声观看。</p>
+
+  <section>
+    <h2>📖 这是什么</h2>
+    <p>Kiro Assistant（道 Agent）是一个<b>本地透明代理</b>插件。它在你本机起一个小代理，悄悄拦截 Kiro 发往云端的请求，把官方的"身份与规则"换成帛书《老子》与道藏《阴符经》之道魂，再原样转发到<b>官方 AWS Q</b>。模型从此不再自称 Kiro，而所有真实工具（读写文件、跑命令、终端）依旧全部可用。</p>
+    <p>核心理念：<b>水善利万物而有静，天之道利而不害</b>。只在通道中借力，不破坏 Kiro 本体、不强加任何模型、不破坏你正常的网络与使用体验。</p>
+  </section>
+
+  <section>
+    <h2>✨ 核心特性</h2>
+    <ul>
+      <li><b>透明代理</b>：本机 HTTP 代理拦截 API，就地注入系统提示词。</li>
+      <li><b>源头隔离</b>：请求侧全替换 + 响应侧身份净化 + 历史 SP/工具隔离 + 幂等防重注。</li>
+      <li><b>双模式</b>：<code>invert</code> 注入 / <code>passthrough</code> 直连，落盘持久化、重启恢复。</li>
+      <li><b>VPN 友好</b>：独立 relay 子进程绕过 Electron 网络栈，默认继承你的代理/VPN，失败回退直连。</li>
+      <li><b>模型保全</b>：永远转发你自己选择的模型，从不强制切换；免费/受限账号照常工作。</li>
+      <li><b>软编码·为变所适</b>：零硬编码，全部动态发现；诊断默认关闭，流式永不卡顿。</li>
+      <li><b>跨平台</b>：自动识别 Windows / macOS / Linux 的 Kiro 配置路径。</li>
+      <li><b>代理常驻</b>：独立进程运行，Kiro 重启不灭，watchdog 自愈。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>🚀 安装</h2>
+    <p>① 从 <a class="inline" href="https://github.com/zhouyoukang1234-spec/kiro-assistant/releases" target="_blank" rel="noopener">Releases</a> 下载最新 <code>kiro-assistant-&lt;版本&gt;.vsix</code>。<br>
+       ② 命令面板 → <code>Extensions: Install from VSIX...</code> 选中文件。<br>
+       ③ 重启 Kiro → 命令面板 → <code>Kiro Assistant: Start (invert)</code>。</p>
+  </section>
+
+  <footer>
+    损之又损，以至于无为 · 无为而无不为 · 水善利万物而有静 · <b>道法自然</b>
+  </footer>
+</div>
+</body>
+</html>
